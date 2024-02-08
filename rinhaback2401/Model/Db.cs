@@ -81,9 +81,9 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
             if (!await reader.ReadAsync(cancellationToken))
                 throw new InvalidOperationException("Could not read from db.");
             var record = reader.GetFieldValue<object[]>(0);
-            failureCode = (int)record[0];
-            if (failureCode != 0)
+            if (record.Length == 1)
             {
+                failureCode = (int)record[0];
                 if (failureCode == -1)
                     return new Error<(int, int), AddError>(AddError.ClientNotFound);
                 else if (failureCode == -2)
@@ -91,8 +91,8 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
                 else
                     throw new InvalidOperationException("Invalid failure code.");
             }
-            saldo = (int)record[1];
-            limite = -1 * (int)record[2];
+            saldo = (int)record[0];
+            limite = -1 * (int)record[1];
         }
         finally
         {

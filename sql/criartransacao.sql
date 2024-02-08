@@ -2,9 +2,10 @@ CREATE OR REPLACE FUNCTION criartransacao(
   IN idcliente integer,
   IN valor integer,
   IN descricao varchar(10)
-) RETURNS TABLE(result integer, saldo2 integer, limite2 integer) AS $$
+) RETURNS RECORD AS $$
 DECLARE
   clienteencontrado cliente%rowtype;
+  ret RECORD;
 BEGIN
   SELECT * FROM cliente
   INTO clienteencontrado
@@ -12,14 +13,14 @@ BEGIN
 
   IF not found THEN
     --raise notice'Id do Cliente % não encontrado.', idcliente;
-    RETURN QUERY select -1, 0, 0;
-    RETURN;
+    select -1 into ret;
+    RETURN ret;
   END IF;
 
   IF clienteencontrado.saldo + valor < clienteencontrado.limite THEN
     --raise notice'Cliente % excedeu o limite.', idcliente;
-    RETURN QUERY select -2, 0, 0;
-    RETURN;
+    select -2 into ret;
+    RETURN ret;
   END IF;
 
   --raise notice'Criando transacao para cliente %.', idcliente;
@@ -28,9 +29,9 @@ BEGIN
   UPDATE cliente
     SET saldo = saldo + valor
     WHERE id = idcliente;
-  RETURN QUERY
-    SELECT 0, saldo, limite
-      FROM cliente
-      WHERE id = idcliente;
+  SELECT saldo, limite
+    FROM cliente
+    WHERE id = idcliente
+    INTO ret;
+  RETURN ret;
 END;$$ LANGUAGE plpgsql;
-
