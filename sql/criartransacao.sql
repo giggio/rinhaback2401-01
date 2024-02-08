@@ -28,10 +28,8 @@ BEGIN
     VALUES (valor, descricao, now() at time zone 'utc', idcliente);
   UPDATE cliente
     SET saldo = saldo + valor
-    WHERE id = idcliente;
-  SELECT saldo, limite
-    FROM cliente
     WHERE id = idcliente
+    RETURNING saldo, limite
     INTO ret;
   RETURN ret;
 END;$$ LANGUAGE plpgsql;
