@@ -72,7 +72,7 @@ if (addSwagger)
 }
 app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes>, NotFound, UnprocessableEntity>> (int idCliente, Transacao transacao, Db db, CancellationToken cancellationToken) =>
 {
-    if (transacao.Descricao.Length > 10)
+    if (transacao.Descricao is null or "" or { Length: > 10 })
         return TypedResults.UnprocessableEntity();
     return await db.AddAsync(idCliente, transacao, cancellationToken) switch
     {
