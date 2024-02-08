@@ -18,6 +18,15 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
     private readonly Pool<NpgsqlCommand> getTransacoesCommandPool = CreateGetTransacoesCommandPool(loggerFactory.CreateLogger<Pool<NpgsqlCommand>>());
     private bool disposed;
 
+    public int QuantityConnectionPoolItemsAvailable => connectionPool.QuantityAvailable;
+    public int QuantityInsertCommandPoolItemssAvailable => insertCommandPool.QuantityAvailable;
+    public int QuantityGetClienteCommandPoolItemssAvailable => getClienteCommandPool.QuantityAvailable;
+    public int QuantityGetTransacoesCommandPoolItemssAvailable => getTransacoesCommandPool.QuantityAvailable;
+    public int QuantityConnectionPoolItemsWaiting => connectionPool.WaitingRenters;
+    public int QuantityInsertCommandPoolItemssWaiting => insertCommandPool.WaitingRenters;
+    public int QuantityGetClienteCommandPoolItemssWaiting => getClienteCommandPool.WaitingRenters;
+    public int QuantityGetTransacoesCommandPoolItemssWaiting => getTransacoesCommandPool.WaitingRenters;
+
     private static Pool<NpgsqlConnection> CreateConnections(DbConfig config, ILogger<Pool<NpgsqlConnection>> logger)
     {
         var connections = new List<NpgsqlConnection>(config.PoolSize);

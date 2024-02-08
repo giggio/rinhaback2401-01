@@ -1,4 +1,4 @@
-﻿using Nito.AsyncEx;
+using Nito.AsyncEx;
 using System.Data;
 using System.Diagnostics;
 
@@ -24,11 +24,14 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
     private readonly SemaphoreSlim newItemEnquedSemaphore;
     private readonly string typeName;
     private readonly ILogger<Pool<T>> logger;
+    private int waitingRenters;
 
     public async ValueTask<PoolItem<T>> RentAsync(CancellationToken cancellationToken)
     {
         T? item = null;
+        Interlocked.Increment(ref waitingRenters);
         await newItemEnquedSemaphore.WaitAsync(cancellationToken);
+        Interlocked.Decrement(ref waitingRenters);
         try
         {
             using (var _ = await mutex.LockAsync(cancellationToken))
@@ -75,6 +78,12 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
         var items = await ReturnAllAsync(CancellationToken.None);
         await Parallel.ForEachAsync(items, (item, _) => item.DisposeAsync());
     }
+
+    public int QuantityAvailable => queue.Count;
+
+    public int QuantityRented => poolSize - queue.Count;
+
+    public int WaitingRenters => waitingRenters;
 
 }
 

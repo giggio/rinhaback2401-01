@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Npgsql;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using RinhaBack2401.Model;
 using System.Text.Json;
 
@@ -40,6 +42,13 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, RinhaJsonContext.Default);
 });
+var addCounters = builder.Configuration.GetValue<bool>("AddCounters");
+if (addCounters)
+{
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(builder => builder.AddService(serviceName: "Rinha"))
+        .WithMetrics(builder => builder.AddAspNetCoreInstrumentation());
+}
 
 var app = builder.Build();
 
@@ -94,6 +103,10 @@ if (addLogging)
 {
     var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
     NpgsqlLoggingConfiguration.InitializeLogging(loggerFactory);
+}
+if (addCounters)
+{
+    app.AddCustomMeters();
 }
 app.Run();
 
