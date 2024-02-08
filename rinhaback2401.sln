@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "rinhaback2401", "rinhaback2401\rinhaback2401.csproj", "{ECAF5B3D-B5AB-4105-861A-0C565863E051}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4D2D0E4A-779D-439F-8E79-F4DEFEB74B0B}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitignore = .gitignore
+		ddl.sql = ddl.sql
+		docker-compose.yml = docker-compose.yml
+		Dockerfile.monitor = Dockerfile.monitor
+		global.json = global.json
+		LICENSE.txt = LICENSE.txt
+		nginx.conf = nginx.conf
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ECAF5B3D-B5AB-4105-861A-0C565863E051}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ECAF5B3D-B5AB-4105-861A-0C565863E051}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ECAF5B3D-B5AB-4105-861A-0C565863E051}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ECAF5B3D-B5AB-4105-861A-0C565863E051}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D51BDE08-B6A5-45D2-BBB5-FC27B0F5D352}
+	EndGlobalSection
+EndGlobal

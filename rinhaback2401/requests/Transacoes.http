@@ -1,0 +1,66 @@
+GET http://localhost:9999/healthz
+
+###
+
+GET http://localhost:9999/clientes/1/extrato
+
+###
+
+GET http://localhost:9999/clientes/6/extrato
+
+###
+
+POST http://localhost:9999/clientes/1/transacoes
+Content-Type: application/json
+
+{
+  "valor": 1000,
+  "tipo" : "c",
+  "descricao" : "Um Crédito"
+}
+
+###
+
+POST http://localhost:9999/clientes/1/transacoes
+Content-Type: application/json
+
+{
+  "valor": 50000,
+  "tipo" : "d",
+  "descricao" : "DebitoG"
+}
+
+###
+
+POST http://localhost:9999/clientes/3/transacoes
+Content-Type: application/json
+
+{
+  "valor": 200,
+  "tipo" : "c",
+  "descricao" : "OutCrédito"
+}
+
+###
+
+POST http://localhost:9999/clientes/6/transacoes
+Content-Type: application/json
+
+{
+  "valor": 666,
+  "tipo" : "c",
+  "descricao" : "x"
+}
+
+###
+
+POST http://localhost:9999/clientes/3/transacoes
+Content-Type: application/json
+
+{
+  "valor": 200,
+  "tipo" : "c",
+  "descricao" : "Descricao muito comprida"
+}
+
+###

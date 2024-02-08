@@ -1,0 +1,6 @@
+{
+  "sdk": {
+    "allowPrerelease": true,
+    "rollForward": "latestMajor"
+  }
+}

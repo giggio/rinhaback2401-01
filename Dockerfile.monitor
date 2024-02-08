@@ -1,0 +1,5 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0.100-jammy AS build
+RUN mkdir /tools && dotnet tool install --tool-path /tools dotnet-counters
+RUN echo '#!/bin/bash\ndotnet-counters monitor --name Rinha --counters Rinha,System.Runtime,Microsoft.AspNetCore.Hosting,Microsoft-AspNetCore-Server-Kestrel' > /tools/monitor && chmod +x /tools/monitor
+ENV PATH="/tools:${PATH}"
+
