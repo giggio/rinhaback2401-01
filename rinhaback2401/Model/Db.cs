@@ -12,37 +12,29 @@ public sealed class Db(IOptions<DbConfig> configOption, ILogger<Db> logger, ILog
 public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFactory) : IAsyncDisposable
 #endif
 {
-    private readonly Pool<NpgsqlConnection> connectionPool = CreateConnections(configOption.Value, loggerFactory.CreateLogger<Pool<NpgsqlConnection>>());
     private readonly Pool<NpgsqlCommand> insertCommandPool = CreateInsertCommandPool(loggerFactory.CreateLogger<Pool<NpgsqlCommand>>());
     private readonly Pool<NpgsqlCommand> getClienteCommandPool = CreateGetClienteCommandPool(loggerFactory.CreateLogger<Pool<NpgsqlCommand>>());
     private readonly Pool<NpgsqlCommand> getTransacoesCommandPool = CreateGetTransacoesCommandPool(loggerFactory.CreateLogger<Pool<NpgsqlCommand>>());
     private bool disposed;
 
-    public int QuantityConnectionPoolItemsAvailable => connectionPool.QuantityAvailable;
     public int QuantityInsertCommandPoolItemssAvailable => insertCommandPool.QuantityAvailable;
     public int QuantityGetClienteCommandPoolItemssAvailable => getClienteCommandPool.QuantityAvailable;
     public int QuantityGetTransacoesCommandPoolItemssAvailable => getTransacoesCommandPool.QuantityAvailable;
-    public int QuantityConnectionPoolItemsWaiting => connectionPool.WaitingRenters;
     public int QuantityInsertCommandPoolItemssWaiting => insertCommandPool.WaitingRenters;
     public int QuantityGetClienteCommandPoolItemssWaiting => getClienteCommandPool.WaitingRenters;
     public int QuantityGetTransacoesCommandPoolItemssWaiting => getTransacoesCommandPool.WaitingRenters;
 
-    private static Pool<NpgsqlConnection> CreateConnections(DbConfig config, ILogger<Pool<NpgsqlConnection>> logger)
+    private NpgsqlConnection CreateConnection()
     {
-        var connections = new List<NpgsqlConnection>(config.PoolSize);
-        for (var i = 0; i < config.PoolSize; i++)
-        {
-            var conn = new NpgsqlConnection(config.ConnectionString);
-            conn.Open();
-            connections.Add(conn);
-        }
-        return new(connections, logger);
+        var conn = new NpgsqlConnection(configOption.Value.ConnectionString);
+        conn.Open();
+        return conn;
     }
 
     private static Pool<NpgsqlCommand> CreateInsertCommandPool(ILogger<Pool<NpgsqlCommand>> logger) =>
         CreateCommandPool(logger,
             "select criartransacao($1, $2, $3)",
-            2000,
+            1000,
             new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer },
             new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer },
             new NpgsqlParameter<string>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Varchar });
@@ -72,8 +64,7 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
     public async Task<Result<(int limite, int saldo), AddError>> AddAsync(int idCliente, Transacao transacao, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
-        await using var connectionPoolItem = await connectionPool.RentAsync(cancellationToken);
-        var connection = connectionPoolItem.Value;
+        using var connection = CreateConnection();
         Debug.Assert(connection.State == ConnectionState.Open);
         var failureCode = 0;
         var limite = 0;
@@ -116,8 +107,7 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
     public async Task<Extrato?> GetExtratoAsync(int idCliente, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
-        await using var connectionsPoolItem = await connectionPool.RentAsync(cancellationToken);
-        var connection = connectionsPoolItem.Value;
+        using var connection = CreateConnection();
         Debug.Assert(connection.State == ConnectionState.Open);
         var saldo = await GetSaldoAsync(idCliente, connection, cancellationToken);
         if (saldo is null)
@@ -186,8 +176,6 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
             await getClienteCommandPool.DisposeAsync();
         if (getTransacoesCommandPool is not null)
             await getTransacoesCommandPool.DisposeAsync();
-        if (connectionPool is not null)
-            await connectionPool.DisposeAsync();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
