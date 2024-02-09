@@ -1,9 +1,10 @@
-﻿using RinhaBack2401.Model;
+using RinhaBack2401.Model;
 using System.Text.Json.Serialization;
 
 namespace RinhaBack2401;
 
 [JsonSerializable(typeof(Transacao))]
+[JsonSerializable(typeof(TransacaoModel))]
 [JsonSerializable(typeof(Transacoes))]
 [JsonSerializable(typeof(Extrato))]
 [JsonSerializable(typeof(Saldo))]

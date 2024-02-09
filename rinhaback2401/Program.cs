@@ -63,10 +63,6 @@ if (addLogging)
         {
             await next(context);
         }
-        catch (BadHttpRequestException)
-        {
-            throw;
-        }
         catch (Exception ex)
         {
             app.Logger.AppError(context.Request.GetDisplayUrl(), ex.ToString());
@@ -82,13 +78,24 @@ if (addSwagger)
     app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 #endif
 }
-app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes>, NotFound, UnprocessableEntity, StatusCodeHttpResult>> (int idCliente, Transacao transacao, Db db, CancellationToken cancellationToken) =>
+app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes>, NotFound, UnprocessableEntity, StatusCodeHttpResult>>
+    (int idCliente, TransacaoModel transacao, Db db, CancellationToken cancellationToken) =>
 {
     if (transacao.Descricao is null or "" or { Length: > 10 })
         return TypedResults.UnprocessableEntity();
+    if (int.TryParse(transacao.Valor?.ToString(), out var valor) is false)
+        return TypedResults.UnprocessableEntity();
+    var tipoTransacao = transacao.Tipo switch
+    {
+        "c" => TipoTransacao.c,
+        "d" => TipoTransacao.d,
+        _ => TipoTransacao.Incorrect
+    };
+    if (tipoTransacao == TipoTransacao.Incorrect)
+        return TypedResults.UnprocessableEntity();
     try
     {
-        return await db.AddAsync(idCliente, transacao, cancellationToken) switch
+        return await db.AddAsync(idCliente, new Transacao(valor, tipoTransacao, transacao.Descricao), cancellationToken) switch
         {
             Ok<(int, int), AddError>((int limite, int saldo)) => TypedResults.Ok(new Transacoes(limite, saldo)),
             Error<(int, int), AddError>(AddError.ClientNotFound) => TypedResults.NotFound(),
@@ -115,7 +122,7 @@ app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotF
         return TypedResults.StatusCode(408);
     }
 });
-app.MapHealthChecks("/healthz");
+app.MapHealthChecks("/healthz").ExcludeFromDescription();
 if (addLogging)
 {
     var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();

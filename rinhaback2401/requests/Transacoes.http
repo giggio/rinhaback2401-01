@@ -64,3 +64,14 @@ Content-Type: application/json
 }
 
 ###
+
+POST http://localhost:9999/clientes/1/transacoes
+Content-Type: application/json
+
+{
+  "valor": 1.1,
+  "tipo" : "c",
+  "descricao" : "incorreto"
+}
+
+###
