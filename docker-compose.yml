@@ -107,7 +107,7 @@ services:
       resources:
         limits:
           cpus: '0.4'
-          memory: '102MB'
+          memory: '192MB'
     networks:
       - app-network
     healthcheck:

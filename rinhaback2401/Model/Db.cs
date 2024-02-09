@@ -41,22 +41,22 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
 
     private static Pool<NpgsqlCommand> CreateInsertCommandPool(ILogger<Pool<NpgsqlCommand>> logger) =>
         CreateCommandPool(logger,
-        "select criartransacao($1, $2, $3)",
-        20,
-        new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer },
-        new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer },
-        new NpgsqlParameter<string>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Varchar });
+            "select criartransacao($1, $2, $3)",
+            2000,
+            new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer },
+            new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer },
+            new NpgsqlParameter<string>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Varchar });
 
     private static Pool<NpgsqlCommand> CreateGetClienteCommandPool(ILogger<Pool<NpgsqlCommand>> logger) =>
         CreateCommandPool(logger,
-        """SELECT saldo, limite FROM cliente WHERE id = $1""",
-        20,
+        "SELECT saldo, limite FROM cliente WHERE id = $1",
+        200,
         new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer });
 
     private static Pool<NpgsqlCommand> CreateGetTransacoesCommandPool(ILogger<Pool<NpgsqlCommand>> logger) =>
         CreateCommandPool(logger,
-        """SELECT valor, descricao, realizadaem FROM transacao WHERE idcliente = $1 ORDER BY id DESC""",
-        20,
+        "SELECT valor, descricao, realizadaem FROM transacao WHERE idcliente = $1 ORDER BY id DESC",
+        200,
         new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer });
 
     private static Pool<NpgsqlCommand> CreateCommandPool(ILogger<Pool<NpgsqlCommand>> logger, string commandText, int numberOfCommandsPerPool, params NpgsqlParameter[] parameters)
@@ -86,7 +86,7 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
         command.Parameters[2].Value = transacao.Descricao;
         try
         {
-            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
                 throw new InvalidOperationException("Could not read from db.");
             var record = reader.GetFieldValue<object[]>(0);
@@ -113,60 +113,66 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
         return new Ok<(int limite, int saldo), AddError>((limite, saldo));
     }
 
-
     public async Task<Extrato?> GetExtratoAsync(int idCliente, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
-        var saldo = await GetSaldoAsync(idCliente, cancellationToken);
+        await using var connectionsPoolItem = await connectionPool.RentAsync(cancellationToken);
+        var connection = connectionsPoolItem.Value;
+        Debug.Assert(connection.State == ConnectionState.Open);
+        var saldo = await GetSaldoAsync(idCliente, connection, cancellationToken);
         if (saldo is null)
             return null;
-        var transacoes = await GetTransacoesAsync(idCliente, cancellationToken);
+        var transacoes = await GetTransacoesAsync(idCliente, connection, cancellationToken);
         var extrato = new Extrato((Saldo)saldo, transacoes);
         return extrato;
     }
 
-    private async Task<Saldo?> GetSaldoAsync(int idCliente, CancellationToken cancellationToken)
+    private async Task<Saldo?> GetSaldoAsync(int idCliente, NpgsqlConnection connection, CancellationToken cancellationToken)
     {
-        await using var connectionsPoolItem = await connectionPool.RentAsync(cancellationToken);
-        var connection = connectionsPoolItem.Value;
-        Debug.Assert(connection.State == ConnectionState.Open);
         await using var commandPoolItem = await getClienteCommandPool.RentAsync(cancellationToken);
         var command = commandPoolItem.Value;
         command.Connection = connection;
         command.Parameters[0].Value = idCliente;
-        Saldo? saldo = null;
-        using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        try
         {
+            using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
             command.Connection = connection;
             var success = await reader.ReadAsync(cancellationToken);
             if (success)
-                saldo = new(reader.GetInt32(0), DateTime.UtcNow, reader.GetInt32(1) * -1);
+            {
+                var saldo = new Saldo(reader.GetInt32(0), DateTime.UtcNow, reader.GetInt32(1) * -1);
+                return saldo;
+            }
+            return null;
         }
-        command.Connection = null;
-        return saldo;
+        finally
+        {
+            command.Connection = null;
+        }
     }
 
-    private async Task<List<TransacaoComData>> GetTransacoesAsync(int idCliente, CancellationToken cancellationToken)
+    private async Task<List<TransacaoComData>> GetTransacoesAsync(int idCliente, NpgsqlConnection connection, CancellationToken cancellationToken)
     {
-        await using var connectionsPoolItem = await connectionPool.RentAsync(cancellationToken);
-        var connection = connectionsPoolItem.Value;
-        Debug.Assert(connection.State == ConnectionState.Open);
         await using var commandPoolItem = await getTransacoesCommandPool.RentAsync(cancellationToken);
         var command = commandPoolItem.Value;
         command.Connection = connection;
         command.Parameters[0].Value = idCliente;
         var transacoes = new List<TransacaoComData>();
-        using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        try
         {
+            using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
                 var valor = reader.GetInt32(0);
                 var transacao = new TransacaoComData(Math.Abs(valor), valor < 0 ? TipoTransacao.d : TipoTransacao.c, reader.GetString(1), DateTime.SpecifyKind(reader.GetDateTime(2), DateTimeKind.Utc));
                 transacoes.Add(transacao);
             }
+            return transacoes;
         }
-        command.Connection = null;
-        return transacoes;
+        finally
+        {
+            command.Connection = null;
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -205,3 +211,51 @@ public sealed class DbConfig
 }
 
 public enum AddError { ClientNotFound, LimitExceeded }
+
+public static class ADOExtensions
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task<NpgsqlDataReader> ExecuteReaderAsync(this NpgsqlCommand command, byte retryCount, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            try
+            {
+                return command.ExecuteReaderAsync(cancellationToken);
+            }
+            catch (NpgsqlException ex) when (retryCount++ < 4 && ex.InnerException is TimeoutException)
+            {
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task<NpgsqlDataReader> ExecuteReaderAsync(this NpgsqlBatch command, byte retryCount, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            try
+            {
+                return command.ExecuteReaderAsync(cancellationToken);
+            }
+            catch (NpgsqlException ex) when (retryCount++ < 4 && ex.InnerException is TimeoutException)
+            {
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Task<bool> NextResultAsync(this NpgsqlDataReader reader, byte retryCount, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            try
+            {
+                return reader.NextResultAsync(cancellationToken);
+            }
+            catch (NpgsqlException ex) when (retryCount++ < 4 && ex.InnerException is TimeoutException)
+            {
+            }
+        }
+    }
+}

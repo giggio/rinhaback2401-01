@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Npgsql;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -7,6 +8,7 @@ using RinhaBack2401.Model;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddRequestTimeouts(options => options.DefaultPolicy = new RequestTimeoutPolicy { Timeout = TimeSpan.FromSeconds(60) });
 var connectionString = builder.Configuration.GetConnectionString("Rinha");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -51,6 +53,7 @@ if (addCounters)
 }
 
 var app = builder.Build();
+app.UseRequestTimeouts();
 
 if (addLogging)
 {
@@ -79,24 +82,38 @@ if (addSwagger)
     app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 #endif
 }
-app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes>, NotFound, UnprocessableEntity>> (int idCliente, Transacao transacao, Db db, CancellationToken cancellationToken) =>
+app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes>, NotFound, UnprocessableEntity, StatusCodeHttpResult>> (int idCliente, Transacao transacao, Db db, CancellationToken cancellationToken) =>
 {
     if (transacao.Descricao is null or "" or { Length: > 10 })
         return TypedResults.UnprocessableEntity();
-    return await db.AddAsync(idCliente, transacao, cancellationToken) switch
+    try
     {
-        Ok<(int, int), AddError>((int limite, int saldo)) => TypedResults.Ok(new Transacoes(limite, saldo)),
-        Error<(int, int), AddError>(AddError.ClientNotFound) => TypedResults.NotFound(),
-        Error<(int, int), AddError>(AddError.LimitExceeded) => TypedResults.UnprocessableEntity(),
-        _ => throw new InvalidOperationException("Invalid return from AddAsync.")
-    };
+        return await db.AddAsync(idCliente, transacao, cancellationToken) switch
+        {
+            Ok<(int, int), AddError>((int limite, int saldo)) => TypedResults.Ok(new Transacoes(limite, saldo)),
+            Error<(int, int), AddError>(AddError.ClientNotFound) => TypedResults.NotFound(),
+            Error<(int, int), AddError>(AddError.LimitExceeded) => TypedResults.UnprocessableEntity(),
+            _ => throw new InvalidOperationException("Invalid return from AddAsync.")
+        };
+    }
+    catch (OperationCanceledException)
+    {
+        return TypedResults.StatusCode(408);
+    }
 });
-app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotFound>> (int idCliente, Db db, CancellationToken cancellationToken) =>
+app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotFound, StatusCodeHttpResult>> (int idCliente, Db db, CancellationToken cancellationToken) =>
 {
-    var extrato = await db.GetExtratoAsync(idCliente, cancellationToken);
-    if (extrato is null)
-        return TypedResults.NotFound();
-    return TypedResults.Ok(extrato);
+    try
+    {
+        var extrato = await db.GetExtratoAsync(idCliente, cancellationToken);
+        if (extrato is null)
+            return TypedResults.NotFound();
+        return TypedResults.Ok(extrato);
+    }
+    catch (OperationCanceledException)
+    {
+        return TypedResults.StatusCode(408);
+    }
 });
 app.MapHealthChecks("/healthz");
 if (addLogging)
