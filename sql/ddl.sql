@@ -25,3 +25,8 @@ CREATE UNLOGGED TABLE transacao (
     realizadaem timestamp NOT NULL,
     idcliente integer NOT NULL
 );
+
+CREATE INDEX ix_transacao_idcliente ON transacao
+(
+    idcliente ASC
+);
