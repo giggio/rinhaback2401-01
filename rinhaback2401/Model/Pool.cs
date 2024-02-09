@@ -7,7 +7,9 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
 {
     private readonly int poolSize;
     private readonly string typeName;
+#if !EXTRAOPTIMIZE
     private readonly ILogger<Pool<T>> logger;
+#endif
     private int waitingRenters;
     private readonly Channel<T> queue = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
     {
@@ -16,9 +18,16 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
         SingleWriter = false
     });
 
-    public Pool(ICollection<T> items, ILogger<Pool<T>> logger)
+    public Pool(
+        ICollection<T> items
+#if !EXTRAOPTIMIZE
+        , ILogger<Pool<T>> logger
+#endif
+        )
     {
+#if !EXTRAOPTIMIZE
         this.logger = logger;
+#endif
         poolSize = items.Count;
         Debug.Assert(poolSize > 0);
         foreach (var item in items)
@@ -27,7 +36,9 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
                 throw new ApplicationException("Failed to enqueue starting item on Pool.");
         }
         typeName = typeof(T).Name;
+#if !EXTRAOPTIMIZE
         logger.PoolCreated(typeName, poolSize);
+#endif
     }
 
     public async ValueTask<PoolItem<T>> RentAsync(CancellationToken cancellationToken)
@@ -36,7 +47,9 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
         Interlocked.Increment(ref waitingRenters);
         try
         {
+#if !EXTRAOPTIMIZE
             logger.PoolRentingItem(typeName, queue.Reader.Count);
+#endif
             item = await queue.Reader.ReadAsync(cancellationToken);
             var poolItem = new PoolItem<T>(item, ReturnPoolItemAsync);
             return poolItem;
@@ -55,7 +68,9 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
 
     public async ValueTask<List<T>> ReturnAllAsync(CancellationToken cancellationToken)
     {
+#if !EXTRAOPTIMIZE
         logger.PoolReturningAllItems(typeName, queue.Reader.Count);
+#endif
         var items = new List<T>();
         await foreach (var item in queue.Reader.ReadAllAsync(cancellationToken))
             items.Add(item);
@@ -65,7 +80,9 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
     private async ValueTask ReturnPoolItemAsync(PoolItem<T> poolItem)
     {
         await queue.Writer.WriteAsync(poolItem.Value);
+#if !EXTRAOPTIMIZE
         logger.PoolReturnedItem(typeName, queue.Reader.Count);
+#endif
     }
 
     public async ValueTask DisposeAsync()
@@ -74,11 +91,13 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
         await Parallel.ForEachAsync(items, (item, _) => item.DisposeAsync());
     }
 
+#if !EXTRAOPTIMIZE
     public int QuantityAvailable => queue.Reader.Count;
 
     public int QuantityRented => poolSize - queue.Reader.Count;
 
     public int WaitingRenters => waitingRenters;
+#endif
 
 }
 

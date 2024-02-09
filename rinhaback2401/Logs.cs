@@ -2,6 +2,7 @@ using RinhaBack2401.Model;
 
 namespace RinhaBack2401;
 
+#if !EXTRAOPTIMIZE
 public static partial class Logs
 {
     [LoggerMessage(EventId = 1, Level = LogLevel.Error, Message = "Got unhandled exception at url {url}:\n{exceptionMessage}.")]
@@ -27,3 +28,4 @@ public static partial class Logs
 }
 
 public sealed class AppLogs { }
+#endif

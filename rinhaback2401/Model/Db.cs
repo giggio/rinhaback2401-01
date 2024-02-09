@@ -6,23 +6,37 @@ using System.Runtime.CompilerServices;
 
 namespace RinhaBack2401.Model;
 
-#if DEBUG
-public sealed class Db(IOptions<DbConfig> configOption, ILogger<Db> logger, ILoggerFactory loggerFactory) : IAsyncDisposable
-#else
-public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFactory) : IAsyncDisposable
+public sealed class Db(IOptions<DbConfig> configOption
+#if !EXTRAOPTIMIZE
+    , ILogger<Db> logger, ILoggerFactory loggerFactory
 #endif
+    ) : IAsyncDisposable
 {
-    private readonly Pool<NpgsqlCommand> insertCommandPool = CreateInsertCommandPool(loggerFactory.CreateLogger<Pool<NpgsqlCommand>>());
-    private readonly Pool<NpgsqlCommand> getClienteCommandPool = CreateGetClienteCommandPool(loggerFactory.CreateLogger<Pool<NpgsqlCommand>>());
-    private readonly Pool<NpgsqlCommand> getTransacoesCommandPool = CreateGetTransacoesCommandPool(loggerFactory.CreateLogger<Pool<NpgsqlCommand>>());
+    private readonly Pool<NpgsqlCommand> insertCommandPool = CreateInsertCommandPool(
+#if !EXTRAOPTIMIZE
+        loggerFactory.CreateLogger<Pool<NpgsqlCommand>>()
+#endif
+        );
+    private readonly Pool<NpgsqlCommand> getClienteCommandPool = CreateGetClienteCommandPool(
+#if !EXTRAOPTIMIZE
+        loggerFactory.CreateLogger<Pool<NpgsqlCommand>>()
+#endif
+        );
+    private readonly Pool<NpgsqlCommand> getTransacoesCommandPool = CreateGetTransacoesCommandPool(
+#if !EXTRAOPTIMIZE
+        loggerFactory.CreateLogger<Pool<NpgsqlCommand>>()
+#endif
+        );
     private bool disposed;
 
+#if !EXTRAOPTIMIZE
     public int QuantityInsertCommandPoolItemssAvailable => insertCommandPool.QuantityAvailable;
     public int QuantityGetClienteCommandPoolItemssAvailable => getClienteCommandPool.QuantityAvailable;
     public int QuantityGetTransacoesCommandPoolItemssAvailable => getTransacoesCommandPool.QuantityAvailable;
     public int QuantityInsertCommandPoolItemssWaiting => insertCommandPool.WaitingRenters;
     public int QuantityGetClienteCommandPoolItemssWaiting => getClienteCommandPool.WaitingRenters;
     public int QuantityGetTransacoesCommandPoolItemssWaiting => getTransacoesCommandPool.WaitingRenters;
+#endif
 
     private NpgsqlConnection CreateConnection()
     {
@@ -31,34 +45,63 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
         return conn;
     }
 
-    private static Pool<NpgsqlCommand> CreateInsertCommandPool(ILogger<Pool<NpgsqlCommand>> logger) =>
-        CreateCommandPool(logger,
+    private static Pool<NpgsqlCommand> CreateInsertCommandPool(
+#if !EXTRAOPTIMIZE
+        ILogger<Pool<NpgsqlCommand>> logger
+#endif
+        ) =>
+        CreateCommandPool(
+#if !EXTRAOPTIMIZE
+            logger,
+#endif
             "select criartransacao($1, $2, $3)",
             1000,
             new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer },
             new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer },
             new NpgsqlParameter<string>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Varchar });
 
-    private static Pool<NpgsqlCommand> CreateGetClienteCommandPool(ILogger<Pool<NpgsqlCommand>> logger) =>
-        CreateCommandPool(logger,
+    private static Pool<NpgsqlCommand> CreateGetClienteCommandPool(
+#if !EXTRAOPTIMIZE
+        ILogger<Pool<NpgsqlCommand>> logger
+#endif
+        ) =>
+        CreateCommandPool(
+#if !EXTRAOPTIMIZE
+        logger,
+#endif
         "SELECT saldo, limite FROM cliente WHERE id = $1",
         200,
         new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer });
 
-    private static Pool<NpgsqlCommand> CreateGetTransacoesCommandPool(ILogger<Pool<NpgsqlCommand>> logger) =>
-        CreateCommandPool(logger,
+    private static Pool<NpgsqlCommand> CreateGetTransacoesCommandPool(
+#if !EXTRAOPTIMIZE
+        ILogger<Pool<NpgsqlCommand>> logger
+#endif
+        ) =>
+        CreateCommandPool(
+#if !EXTRAOPTIMIZE
+        logger,
+#endif
         "SELECT valor, descricao, realizadaem FROM transacao WHERE idcliente = $1 ORDER BY id DESC",
         200,
         new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer });
 
-    private static Pool<NpgsqlCommand> CreateCommandPool(ILogger<Pool<NpgsqlCommand>> logger, string commandText, int numberOfCommandsPerPool, params NpgsqlParameter[] parameters)
+    private static Pool<NpgsqlCommand> CreateCommandPool(
+#if !EXTRAOPTIMIZE
+        ILogger<Pool<NpgsqlCommand>> logger,
+#endif
+        string commandText, int numberOfCommandsPerPool, params NpgsqlParameter[] parameters)
     {
         var command = new NpgsqlCommand(commandText);
         command.Parameters.AddRange(parameters);
         var commands = new List<NpgsqlCommand>(numberOfCommandsPerPool) { command };
         for (var k = 0; k < numberOfCommandsPerPool - 1; k++)
             commands.Add(command.Clone());
-        return new(commands, logger);
+        return new(commands
+#if !EXTRAOPTIMIZE
+            , logger
+#endif
+            );
     }
 
     public async Task<Result<(int limite, int saldo), AddError>> AddAsync(int idCliente, Transacao transacao, CancellationToken cancellationToken)
@@ -98,7 +141,7 @@ public sealed class Db(IOptions<DbConfig> configOption, ILoggerFactory loggerFac
         {
             command.Connection = null;
         }
-#if DEBUG
+#if !EXTRAOPTIMIZE
         logger.DbInserted(idCliente, transacao.Valor, transacao.Tipo);
 #endif
         return new Ok<(int limite, int saldo), AddError>((limite, saldo));

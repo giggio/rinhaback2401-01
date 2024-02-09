@@ -10,7 +10,7 @@ services:
     hostname: api1
     container_name: rinhaapi1
     environment:
-      - ConnectionStrings__Rinha=Host=db;Database=rinha;Username=rinha;Password=rinha;Pooling=true;Minimum Pool Size=50;Maximum Pool Size=1000;Multiplexing=true;Timeout=15;Command Timeout=15;Cancellation Timeout=-1;No Reset On Close=true;Max Auto Prepare=20;Auto Prepare Min Usages=1;
+      - ConnectionStrings__Rinha=Host=db;Database=rinha;Username=rinha;Password=rinha;Pooling=true;Minimum Pool Size=50;Maximum Pool Size=2000;Multiplexing=true;Timeout=15;Command Timeout=15;Cancellation Timeout=-1;No Reset On Close=true;Max Auto Prepare=20;Auto Prepare Min Usages=1;
       # - AddLogging=true
       # - Logging__LogLevel__Default=Debug
     depends_on:
@@ -23,16 +23,16 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.4'
-          memory: '131MB'
+          cpus: '0.3'
+          memory: '80MB'
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-o", "/dev/null", "-fs", "--retry", "0", "--head", "http://localhost:9999/healthz"]
-      interval: 10s
-      retries: 3
-      start_period: 2s
-      timeout: 2s
+    # healthcheck:
+    #   test: ["CMD", "curl", "-o", "/dev/null", "-fs", "--retry", "0", "--head", "http://localhost:9999/healthz"]
+    #   interval: 10s
+    #   retries: 3
+    #   start_period: 2s
+    #   timeout: 2s
     volumes:
       - app1:/tmp
 
@@ -58,8 +58,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.3'
-          memory: '96MB'
+          cpus: '0.4'
+          memory: '134MB'
 
   db:
     image: postgres:latest
@@ -79,8 +79,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.4'
-          memory: '192MB'
+          cpus: '0.5'
+          memory: '256MB'
     networks:
       - app-network
     healthcheck:

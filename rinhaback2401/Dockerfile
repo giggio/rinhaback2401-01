@@ -12,7 +12,7 @@ WORKDIR /app
 COPY ./rinhaback2401.csproj ./
 RUN dotnet restore -r linux-x64 /property:Configuration=Release
 COPY . .
-RUN dotnet publish --no-restore -o out
+RUN dotnet publish --no-restore -p:ExtraOptimize=true -o out
 
 FROM base
 COPY --from=build /usr/bin/curl /usr/bin/curl

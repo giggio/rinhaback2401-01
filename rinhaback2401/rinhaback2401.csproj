@@ -5,10 +5,24 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>RinhaBack2401</RootNamespace>
         <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+        <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- too much noise -->
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
         <PublishAot>true</PublishAot>
         <OptimizationPreference>Speed</OptimizationPreference>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(ExtraOptimize)' == 'true'">
+        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+        <DebuggerSupport>false</DebuggerSupport>
+        <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+        <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+        <EventSourceSupport>false</EventSourceSupport>
+        <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+        <StackTraceSupport>false</StackTraceSupport>
+        <UseSystemResourceKeys>true</UseSystemResourceKeys>
+        <DefineConstants>$(DefineConstants);EXTRAOPTIMIZE</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Npgsql" Version="8.0.1" />

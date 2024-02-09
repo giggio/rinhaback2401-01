@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Npgsql;
+#if !EXTRAOPTIMIZE
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+#endif
 using RinhaBack2401.Model;
 using System.Text.Json;
 
@@ -15,13 +17,14 @@ if (string.IsNullOrWhiteSpace(connectionString))
     Console.Error.WriteLine("No connection string found.");
     return 1;
 }
-var addLogging = builder.Configuration.GetValue<bool>("AddLogging");
 builder.Services.Configure<DbConfig>(dbConfig => dbConfig.ConnectionString = connectionString);
-
 builder.Services.AddSingleton<Db>();
-if (addLogging)
-    builder.Services.AddLogging(opt => opt.AddSimpleConsole(options => options.TimestampFormat = "[HH:mm:ss:fff] "));
+
+builder.Services.AddLogging(opt => opt.AddSimpleConsole(options => options.TimestampFormat = "[HH:mm:ss:fff] "));
+
+#if !EXTRAOPTIMIZE
 builder.Services.AddHealthChecks();
+#endif
 
 var addSwagger = builder.Configuration.GetValue<bool>("AddSwagger");
 if (addSwagger)
@@ -47,16 +50,26 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 var addCounters = builder.Configuration.GetValue<bool>("AddCounters");
 if (addCounters)
 {
+#if EXTRAOPTIMIZE
+    Console.Error.WriteLine("Counters are not available in optimized builds.");
+    return 1;
+#else
     builder.Services.AddOpenTelemetry()
         .ConfigureResource(builder => builder.AddService(serviceName: "Rinha"))
         .WithMetrics(builder => builder.AddAspNetCoreInstrumentation());
+#endif
 }
 
 var app = builder.Build();
 app.UseRequestTimeouts();
 
+var addLogging = builder.Configuration.GetValue<bool>("AddLogging");
 if (addLogging)
 {
+#if EXTRAOPTIMIZE
+    Console.Error.WriteLine("Logging is not available in optimized builds.");
+    return 1;
+#else
     app.Use(async (context, next) =>
     {
         try
@@ -69,6 +82,7 @@ if (addLogging)
             throw;
         }
     });
+#endif
 }
 if (addSwagger)
 {
@@ -122,16 +136,13 @@ app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotF
         return TypedResults.StatusCode(408);
     }
 });
+#if !EXTRAOPTIMIZE
 app.MapHealthChecks("/healthz").ExcludeFromDescription();
 if (addLogging)
-{
-    var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
-    NpgsqlLoggingConfiguration.InitializeLogging(loggerFactory);
-}
+    NpgsqlLoggingConfiguration.InitializeLogging(app.Services.GetRequiredService<ILoggerFactory>());
 if (addCounters)
-{
     app.AddCustomMeters();
-}
+#endif
 app.Run();
 
 return 0;
