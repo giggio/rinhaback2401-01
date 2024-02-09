@@ -6,6 +6,8 @@ services:
     build:
       context: rinhaback2401
       dockerfile: Dockerfile
+      args:
+        CURL: without
     image: giggio/rinhabackend-2401
     hostname: api1
     container_name: rinhaapi1
