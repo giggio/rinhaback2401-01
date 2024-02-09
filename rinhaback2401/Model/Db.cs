@@ -82,7 +82,7 @@ public sealed class Db(IOptions<DbConfig> configOption
 #if !EXTRAOPTIMIZE
         logger,
 #endif
-        "SELECT valor, descricao, realizadaem FROM transacao WHERE idcliente = $1 ORDER BY id DESC",
+        "SELECT valor, descricao, realizadaem FROM transacao WHERE idcliente = $1 ORDER BY id DESC LIMIT 10",
         200,
         new NpgsqlParameter<int>() { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer });
 
