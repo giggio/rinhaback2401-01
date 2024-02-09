@@ -2,7 +2,7 @@ version: '3.9'
 name: 'rinha-giovannibassi'
 
 services:
-  api1:
+  api1: &api
     build:
       context: rinhaback2401
       dockerfile: Dockerfile
@@ -10,7 +10,7 @@ services:
     hostname: api1
     container_name: rinhaapi1
     environment:
-      - ConnectionStrings__Rinha=Host=db;Database=rinha;Username=rinha;Password=rinha;Pooling=true;Minimum Pool Size=10;Maximum Pool Size=50;Multiplexing=true;Timeout=5;Command Timeout=5;Cancellation Timeout=-1;No Reset On Close=true;Max Auto Prepare=10;Auto Prepare Min Usages=1;
+      - ConnectionStrings__Rinha=Host=db;Database=rinha;Username=rinha;Password=rinha;Pooling=true;Minimum Pool Size=50;Maximum Pool Size=1000;Multiplexing=true;Timeout=15;Command Timeout=15;Cancellation Timeout=-1;No Reset On Close=true;Max Auto Prepare=20;Auto Prepare Min Usages=1;
       # - AddLogging=true
       # - Logging__LogLevel__Default=Debug
     depends_on:
@@ -23,8 +23,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: '192MB'
+          cpus: '0.4'
+          memory: '131MB'
     networks:
       - app-network
     healthcheck:
@@ -37,36 +37,9 @@ services:
       - app1:/tmp
 
   api2:
-    build:
-      context: rinhaback2401
-      dockerfile: Dockerfile
-    image: giggio/rinhabackend-2401
+    <<: *api
     hostname: api2
     container_name: rinhaapi2
-    environment:
-      - ConnectionStrings__Rinha=Host=db;Database=rinha;Username=rinha;Password=rinha;Pooling=true;Minimum Pool Size=10;Maximum Pool Size=50;Multiplexing=true;Timeout=5;Command Timeout=5;Cancellation Timeout=-1;No Reset On Close=true;Max Auto Prepare=10;Auto Prepare Min Usages=1;
-      # - AddLogging=true
-      # - Logging__LogLevel__Default=Debug
-    depends_on:
-      db:
-        condition: service_healthy
-    ulimits:
-      nofile:
-        soft: 1000000
-        hard: 1000000
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: '192MB'
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-o", "/dev/null", "-fs", "--retry", "0", "--head", "http://localhost:9999/healthz"]
-      interval: 10s
-      retries: 3
-      start_period: 2s
-      timeout: 2s
     volumes:
       - app2:/tmp
 
@@ -85,8 +58,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.1'
-          memory: '64MB'
+          cpus: '0.3'
+          memory: '96MB'
 
   db:
     image: postgres:latest
