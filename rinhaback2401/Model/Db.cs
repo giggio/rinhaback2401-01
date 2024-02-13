@@ -169,7 +169,6 @@ public sealed class Db(IOptions<DbConfig> configOption
         try
         {
             await using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
-            command.Connection = connection;
             var success = await reader.ReadAsync(cancellationToken);
             if (success)
             {
