@@ -4,7 +4,7 @@ name: 'rinha-giovannibassi'
 services:
   api1: &api
     build:
-      context: rinhaback2401
+      context: .
       dockerfile: Dockerfile
       args:
         CURL: without
@@ -49,7 +49,7 @@ services:
     image: envoyproxy/envoy:v1.29-latest
     container_name: rinhaproxy
     volumes:
-      - ./envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ../envoy.yaml:/etc/envoy/envoy.yaml:ro
     depends_on:
       - api1
       - api2
@@ -75,9 +75,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./sql/ddl.sql:/docker-entrypoint-initdb.d/01-ddl.sql:ro
-      - ./sql/criartransacao.sql:/docker-entrypoint-initdb.d/11-criartransacao.sql:ro
-      - ./sql/resetdb.sql:/docker-entrypoint-initdb.d/21-resetdb.sql:ro
+      - ../sql/ddl.sql:/docker-entrypoint-initdb.d/01-ddl.sql:ro
+      - ../sql/criartransacao.sql:/docker-entrypoint-initdb.d/11-criartransacao.sql:ro
+      - ../sql/resetdb.sql:/docker-entrypoint-initdb.d/21-resetdb.sql:ro
     deploy:
       resources:
         limits:
