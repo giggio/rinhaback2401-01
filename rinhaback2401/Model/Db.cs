@@ -120,7 +120,7 @@ public sealed class Db(IOptions<DbConfig> configOption
         command.Parameters[2].Value = transacao.Descricao;
         try
         {
-            using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
                 throw new InvalidOperationException("Could not read from db.");
             var record = reader.GetFieldValue<object[]>(0);
@@ -168,7 +168,7 @@ public sealed class Db(IOptions<DbConfig> configOption
         command.Parameters[0].Value = idCliente;
         try
         {
-            using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
             command.Connection = connection;
             var success = await reader.ReadAsync(cancellationToken);
             if (success)
@@ -193,7 +193,7 @@ public sealed class Db(IOptions<DbConfig> configOption
         var transacoes = new List<TransacaoComData>();
         try
         {
-            using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(retryCount: 4, cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
                 var valor = reader.GetInt32(0);
