@@ -17,7 +17,7 @@ Imports System.Text.Json
 Imports System.Threading
 
 Module Program
-    '<MTAThread>
+
     Public Function Main(args As String()) As Integer
         Dim builder = WebApplication.CreateBuilder(args)
         builder.Services.AddRequestTimeouts(Sub(options) options.DefaultPolicy = New RequestTimeoutPolicy())
@@ -107,17 +107,17 @@ Module Program
                             Return TypedResults.UnprocessableEntity()
                         End If
                         Try
-                            Dim x = Await db.AddAsync(idCliente, New Transacao(valor, tipoTransacao, transacao.Descricao), cancellationToken)
-                            If TypeOf x Is Ok(Of (Integer, Integer), AddError) Then
-                                Dim y = DirectCast(x, Ok(Of (limite As Integer, saldo As Integer), AddError))
-                                Return TypedResults.Ok(New Transacoes(y.Value.limite, y.Value.saldo))
+                            Dim result = Await db.AddAsync(idCliente, New Transacao(valor, tipoTransacao, transacao.Descricao), cancellationToken)
+                            If TypeOf result Is Ok(Of (Integer, Integer), AddError) Then
+                                Dim ok = DirectCast(result, Ok(Of (limite As Integer, saldo As Integer), AddError))
+                                Return TypedResults.Ok(New Transacoes(ok.Value.limite, ok.Value.saldo))
                             End If
-                            If TypeOf x Is [Error](Of (Integer, Integer), AddError) Then
-                                Dim y = DirectCast(x, [Error](Of (limite As Integer, saldo As Integer), AddError))
-                                If y.Error = AddError.ClientNotFound Then
+                            If TypeOf result Is [Error](Of (Integer, Integer), AddError) Then
+                                Dim err = DirectCast(result, [Error](Of (limite As Integer, saldo As Integer), AddError))
+                                If err.Error = AddError.ClientNotFound Then
                                     Return TypedResults.NotFound()
                                 End If
-                                If y.Error = AddError.LimitExceeded Then
+                                If err.Error = AddError.LimitExceeded Then
                                     Return TypedResults.UnprocessableEntity()
                                 End If
                             End If
