@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile
       args:
         CURL: without
+        POOL_OBJECTS: 'true'
     image: giggio/rinhabackend-2401
     hostname: api1
     container_name: rinhaapi1
