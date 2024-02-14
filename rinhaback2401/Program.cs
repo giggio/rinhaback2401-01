@@ -92,8 +92,9 @@ if (addSwagger)
     app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 #endif
 }
+var db = app.Services.GetRequiredService<Db>();
 app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes>, NotFound, UnprocessableEntity, StatusCodeHttpResult>>
-    (int idCliente, TransacaoModel transacao, Db db) =>
+    (int idCliente, TransacaoModel transacao) =>
 {
     if (transacao.Descricao is null or "" or { Length: > 10 })
         return TypedResults.UnprocessableEntity();
@@ -115,7 +116,7 @@ app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes
         _ => throw new InvalidOperationException("Invalid return from AddAsync.")
     };
 });
-app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotFound, StatusCodeHttpResult>> (int idCliente, Db db) =>
+app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotFound, StatusCodeHttpResult>> (int idCliente) =>
 {
     var (success, extrato) = await db.GetExtratoAsync(idCliente);
     if (success)
