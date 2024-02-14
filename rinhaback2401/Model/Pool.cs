@@ -45,7 +45,7 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
 #endif
     }
 
-    public async ValueTask<PoolItem<T>> RentAsync(CancellationToken cancellationToken)
+    public async ValueTask<PoolItem<T>> RentAsync()
     {
         T? item = null;
         Interlocked.Increment(ref waitingRenters);
@@ -54,14 +54,14 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
 #if !EXTRAOPTIMIZE
             logger.PoolRentingItem(typeName, queue.Reader.Count);
 #endif
-            item = await queue.Reader.ReadAsync(cancellationToken);
+            item = await queue.Reader.ReadAsync();
             var poolItem = new PoolItem<T>(item, ReturnPoolItemAsync);
             return poolItem;
         }
         catch
         {
             if (item != null)
-                await queue.Writer.WriteAsync(item, cancellationToken);
+                await queue.Writer.WriteAsync(item);
             throw;
         }
         finally
@@ -70,13 +70,13 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
         }
     }
 
-    public async ValueTask<List<T>> ReturnAllAsync(CancellationToken cancellationToken)
+    public async ValueTask<List<T>> ReturnAllAsync()
     {
 #if !EXTRAOPTIMIZE
         logger.PoolReturningAllItems(typeName, queue.Reader.Count);
 #endif
         var items = new List<T>();
-        await foreach (var item in queue.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var item in queue.Reader.ReadAllAsync())
             items.Add(item);
         return items;
     }
@@ -92,7 +92,7 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        var items = await ReturnAllAsync(CancellationToken.None);
+        var items = await ReturnAllAsync();
         await Parallel.ForEachAsync(items, (item, _) => item.DisposeAsync());
     }
 

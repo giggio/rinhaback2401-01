@@ -23,10 +23,10 @@ public sealed partial class Db(IOptions<DbConfig> configOption
     private NpgsqlConnection CreateConnection() => dataSource.OpenConnection();
 
 
-    public async Task<(AddStatus, int limite, int saldo)> AddAsync(int idCliente, Transacao transacao, CancellationToken cancellationToken)
+    public async Task<(AddStatus, int limite, int saldo)> AddAsync(int idCliente, Transacao transacao)
     {
 #if POOL_OBJECTS
-        await using var commandPoolItem = await insertCommandPool.RentAsync(cancellationToken);
+        await using var commandPoolItem = await insertCommandPool.RentAsync();
         var command = commandPoolItem.Value;
 #else
         await using var command = insertCommand.Clone();
@@ -36,8 +36,8 @@ public sealed partial class Db(IOptions<DbConfig> configOption
         command.Parameters[2].Value = transacao.Descricao;
         await using var connection = CreateConnection();
         command.Connection = connection;
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        if (!await reader.ReadAsync(cancellationToken))
+        await using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
             throw new InvalidOperationException("Could not read from db.");
         var record = reader.GetFieldValue<object[]>(0);
         if (record.Length == 1)
@@ -57,13 +57,13 @@ public sealed partial class Db(IOptions<DbConfig> configOption
         return (AddStatus.Success, limite, saldo);
     }
 
-    public async Task<(bool found, Extrato? extrato)> GetExtratoAsync(int idCliente, CancellationToken cancellationToken)
+    public async Task<(bool found, Extrato? extrato)> GetExtratoAsync(int idCliente)
     {
         using var connection = CreateConnection();
-        var (success, saldo) = await GetSaldoAsync(idCliente, connection, cancellationToken);
+        var (success, saldo) = await GetSaldoAsync(idCliente, connection);
         if (success)
         {
-            var transacoes = await GetTransacoesAsync(idCliente, connection, cancellationToken);
+            var transacoes = await GetTransacoesAsync(idCliente, connection);
             var extrato = new Extrato(saldo!, transacoes);
             return (true, extrato);
         }
@@ -71,18 +71,18 @@ public sealed partial class Db(IOptions<DbConfig> configOption
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private async Task<(bool success, Saldo? saldo)> GetSaldoAsync(int idCliente, NpgsqlConnection connection, CancellationToken cancellationToken)
+    private async Task<(bool success, Saldo? saldo)> GetSaldoAsync(int idCliente, NpgsqlConnection connection)
     {
 #if POOL_OBJECTS
-        await using var commandPoolItem = await getClienteCommandPool.RentAsync(cancellationToken);
+        await using var commandPoolItem = await getClienteCommandPool.RentAsync();
         var command = commandPoolItem.Value;
 #else
         using var command = getClienteCommand.Clone();
 #endif
         command.Connection = connection;
         command.Parameters[0].Value = idCliente;
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        var success = await reader.ReadAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync();
+        var success = await reader.ReadAsync();
         if (success)
         {
             var saldo = new Saldo(reader.GetInt32(0), DateTime.UtcNow, reader.GetInt32(1) * -1);
@@ -93,10 +93,10 @@ public sealed partial class Db(IOptions<DbConfig> configOption
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private async Task<List<TransacaoComData>> GetTransacoesAsync(int idCliente, NpgsqlConnection connection, CancellationToken cancellationToken)
+    private async Task<List<TransacaoComData>> GetTransacoesAsync(int idCliente, NpgsqlConnection connection)
     {
 #if POOL_OBJECTS
-        await using var commandPoolItem = await getTransacoesCommandPool.RentAsync(cancellationToken);
+        await using var commandPoolItem = await getTransacoesCommandPool.RentAsync();
         var command = commandPoolItem.Value;
 #else
         using var command = getTransacoesCommand.Clone();
@@ -104,8 +104,8 @@ public sealed partial class Db(IOptions<DbConfig> configOption
         command.Connection = connection;
         command.Parameters[0].Value = idCliente;
         var transacoes = new List<TransacaoComData>(10);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
         {
             var valor = reader.GetInt32(0);
             var transacao = new TransacaoComData(Math.Abs(valor), valor < 0 ? TipoTransacao.d : TipoTransacao.c, reader.GetString(1), DateTime.SpecifyKind(reader.GetDateTime(2), DateTimeKind.Utc));

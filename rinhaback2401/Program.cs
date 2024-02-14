@@ -93,7 +93,7 @@ if (addSwagger)
 #endif
 }
 app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes>, NotFound, UnprocessableEntity, StatusCodeHttpResult>>
-    (int idCliente, TransacaoModel transacao, Db db, CancellationToken cancellationToken) =>
+    (int idCliente, TransacaoModel transacao, Db db) =>
 {
     if (transacao.Descricao is null or "" or { Length: > 10 })
         return TypedResults.UnprocessableEntity();
@@ -107,7 +107,7 @@ app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes
     };
     if (tipoTransacao == TipoTransacao.Incorrect)
         return TypedResults.UnprocessableEntity();
-    return await db.AddAsync(idCliente, new Transacao(valor, tipoTransacao, transacao.Descricao), cancellationToken) switch
+    return await db.AddAsync(idCliente, new Transacao(valor, tipoTransacao, transacao.Descricao)) switch
     {
         (AddStatus.Success, int limite, int saldo) => TypedResults.Ok(new Transacoes(limite, saldo)),
         (AddStatus.ClientNotFound, _, _) => TypedResults.NotFound(),
@@ -115,9 +115,9 @@ app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes
         _ => throw new InvalidOperationException("Invalid return from AddAsync.")
     };
 });
-app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotFound, StatusCodeHttpResult>> (int idCliente, Db db, CancellationToken cancellationToken) =>
+app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotFound, StatusCodeHttpResult>> (int idCliente, Db db) =>
 {
-    var (success, extrato) = await db.GetExtratoAsync(idCliente, cancellationToken);
+    var (success, extrato) = await db.GetExtratoAsync(idCliente);
     if (success)
         return TypedResults.Ok(extrato!);
     return TypedResults.NotFound();
