@@ -1,3 +1,4 @@
+#if POOL_OBJECTS
 using System.Diagnostics;
 using System.Threading.Channels;
 
@@ -6,10 +7,11 @@ namespace RinhaBack2401.Model;
 public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
 {
     private readonly int poolSize;
-    private readonly string typeName;
 #if !EXTRAOPTIMIZE
+    private readonly string typeName;
     private readonly ILogger<Pool<T>> logger;
 #endif
+    private readonly Action<T> disposeAction;
     private int waitingRenters;
     private readonly Channel<T> queue = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
     {
@@ -19,15 +21,17 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
     });
 
     public Pool(
-        ICollection<T> items
+        ICollection<T> items,
 #if !EXTRAOPTIMIZE
-        , ILogger<Pool<T>> logger
+        ILogger<Pool<T>> logger,
 #endif
+        Action<T> disposeAction
         )
     {
 #if !EXTRAOPTIMIZE
         this.logger = logger;
 #endif
+        this.disposeAction = disposeAction;
         poolSize = items.Count;
         Debug.Assert(poolSize > 0);
         foreach (var item in items)
@@ -35,8 +39,8 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
             if (!queue.Writer.TryWrite(item))
                 throw new ApplicationException("Failed to enqueue starting item on Pool.");
         }
-        typeName = typeof(T).Name;
 #if !EXTRAOPTIMIZE
+        typeName = typeof(T).Name;
         logger.PoolCreated(typeName, poolSize);
 #endif
     }
@@ -79,6 +83,7 @@ public sealed class Pool<T> : IAsyncDisposable where T : class, IAsyncDisposable
 
     private async ValueTask ReturnPoolItemAsync(PoolItem<T> poolItem)
     {
+        disposeAction(poolItem.Value);
         await queue.Writer.WriteAsync(poolItem.Value);
 #if !EXTRAOPTIMIZE
         logger.PoolReturnedItem(typeName, queue.Reader.Count);
@@ -107,3 +112,4 @@ public readonly struct PoolItem<TItem>(TItem value, Func<PoolItem<TItem>, ValueT
 
     public ValueTask DisposeAsync() => returnPoolItemAsync(this);
 }
+#endif

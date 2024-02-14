@@ -107,42 +107,31 @@ app.MapPost("/clientes/{idCliente}/transacoes", async Task<Results<Ok<Transacoes
     };
     if (tipoTransacao == TipoTransacao.Incorrect)
         return TypedResults.UnprocessableEntity();
-    try
+    return await db.AddAsync(idCliente, new Transacao(valor, tipoTransacao, transacao.Descricao), cancellationToken) switch
     {
-        return await db.AddAsync(idCliente, new Transacao(valor, tipoTransacao, transacao.Descricao), cancellationToken) switch
-        {
-            Ok<(int, int), AddError>((int limite, int saldo)) => TypedResults.Ok(new Transacoes(limite, saldo)),
-            Error<(int, int), AddError>(AddError.ClientNotFound) => TypedResults.NotFound(),
-            Error<(int, int), AddError>(AddError.LimitExceeded) => TypedResults.UnprocessableEntity(),
-            _ => throw new InvalidOperationException("Invalid return from AddAsync.")
-        };
-    }
-    catch (OperationCanceledException)
-    {
-        return TypedResults.StatusCode(408);
-    }
+        (AddStatus.Success, int limite, int saldo) => TypedResults.Ok(new Transacoes(limite, saldo)),
+        (AddStatus.ClientNotFound, _, _) => TypedResults.NotFound(),
+        (AddStatus.LimitExceeded, _, _) => TypedResults.UnprocessableEntity(),
+        _ => throw new InvalidOperationException("Invalid return from AddAsync.")
+    };
 });
 app.MapGet("/clientes/{idCliente}/extrato", async Task<Results<Ok<Extrato>, NotFound, StatusCodeHttpResult>> (int idCliente, Db db, CancellationToken cancellationToken) =>
 {
-    try
-    {
-        var extrato = await db.GetExtratoAsync(idCliente, cancellationToken);
-        if (extrato is null)
-            return TypedResults.NotFound();
-        return TypedResults.Ok(extrato);
-    }
-    catch (OperationCanceledException)
-    {
-        return TypedResults.StatusCode(408);
-    }
+    var (success, extrato) = await db.GetExtratoAsync(idCliente, cancellationToken);
+    if (success)
+        return TypedResults.Ok(extrato!);
+    return TypedResults.NotFound();
 });
 #if !EXTRAOPTIMIZE
 app.MapHealthChecks("/healthz").ExcludeFromDescription();
 if (addLogging)
     NpgsqlLoggingConfiguration.InitializeLogging(app.Services.GetRequiredService<ILoggerFactory>());
+#if POOL_OBJECTS
 if (addCounters)
     app.AddCustomMeters();
+#endif
 #endif
 app.Run();
 
 return 0;
+

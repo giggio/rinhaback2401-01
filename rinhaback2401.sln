@@ -9,15 +9,23 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 		.gitignore = .gitignore
-		ddl.sql = ddl.sql
 		Dockerfile.monitor = Dockerfile.monitor
 		envoy.yaml = envoy.yaml
 		global.json = global.json
 		LICENSE.txt = LICENSE.txt
+		nginx.conf = nginx.conf
 		Transacoes.http = Transacoes.http
 	EndProjectSection
 EndProject
 Project("{778DAE3C-4631-46EA-AA77-85C1314464D9}") = "rinhaback2401vb", "rinhaback2401vb\rinhaback2401vb.vbproj", "{680FEB5B-C6C7-4B3D-B540-AD6B8E47D38E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sql", "sql", "{9F8BF83A-A7D5-4C0A-A329-A234632276BF}"
+	ProjectSection(SolutionItems) = preProject
+		sql\criartransacao.sql = sql\criartransacao.sql
+		sql\ddl.sql = sql\ddl.sql
+		sql\resetdb.sql = sql\resetdb.sql
+		sql\runfunction.sql = sql\runfunction.sql
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,6 +44,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9F8BF83A-A7D5-4C0A-A329-A234632276BF} = {4D2D0E4A-779D-439F-8E79-F4DEFEB74B0B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D51BDE08-B6A5-45D2-BBB5-FC27B0F5D352}

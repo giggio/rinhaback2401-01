@@ -5,9 +5,20 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>RinhaBack2401</RootNamespace>
         <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
-        <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- too much noise -->
+        <!-- EnableTrimAnalyzer adds too much noise: -->
+        <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+        <!--<DefineConstants>$(DefineConstants);POOL_OBJECTS;EXTRAOPTIMIZE</DefineConstants>-->
     </PropertyGroup>
-    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup Condition="'$(POOL_OBJECTS)' == 'true'">
+        <DefineConstants>$(DefineConstants);POOL_OBJECTS</DefineConstants>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Trim)' == 'true'">
+        <PublishReadyToRun>true</PublishReadyToRun>
+        <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(AOT)' == 'true'">
         <PublishAot>true</PublishAot>
         <OptimizationPreference>Speed</OptimizationPreference>
     </PropertyGroup>

@@ -11,9 +11,9 @@ RUN cd /; ldd /usr/bin/curl | tr -s '[:blank:]' '\n' | grep '^/' \
     | xargs -I % sh -c 'mkdir -p $(dirname deps%); cp % deps%;'
 WORKDIR /app
 COPY ./rinhaback2401.csproj ./
-RUN dotnet restore -r linux-x64 /property:Configuration=Release
+RUN dotnet restore -r linux-x64 /property:Configuration=Release -p:AOT=true
 COPY . .
-RUN dotnet publish --no-restore -p:ExtraOptimize=true -o out
+RUN dotnet publish --no-restore -p:ExtraOptimize=true -p:AOT=true -o out
 
 FROM base as base_without_curl
 COPY --from=build /app/out .

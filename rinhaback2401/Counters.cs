@@ -1,9 +1,10 @@
+#if POOL_OBJECTS
+#if !EXTRAOPTIMIZE
 using RinhaBack2401.Model;
 using System.Diagnostics.Metrics;
 
 namespace RinhaBack2401;
 
-#if !EXTRAOPTIMIZE
 public static class MeterExtensions
 {
     public static void AddCustomMeters(this WebApplication app)
@@ -19,5 +20,6 @@ public static class MeterExtensions
         meter.CreateObservableGauge("Command (Transações) waiting for a pool item", () => db.QuantityGetTransacoesCommandPoolItemssWaiting);
     }
 }
+#endif
 #endif
 
