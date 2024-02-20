@@ -113,4 +113,7 @@ public sealed partial class Db(IOptions<DbConfig> configOption
         }
         return transacoes;
     }
+
+    public async Task WarmUpAsync(int count = 30_000) =>
+        await Task.WhenAll(Enumerable.Range(0, count).Select((i) => GetExtratoAsync((i % 5) + 1)));
 }

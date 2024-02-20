@@ -132,6 +132,9 @@ if (addCounters)
     app.AddCustomMeters();
 #endif
 #endif
+#if EXTRAOPTIMIZE
+await db.WarmUpAsync();
+#endif
 app.Run();
 
 return 0;
